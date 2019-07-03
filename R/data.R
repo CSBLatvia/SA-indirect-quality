@@ -1,7 +1,21 @@
-# Data
+# Demo data for development and testing
 
+# Options
+options(encoding = "UTF-8")
+options(stringsAsFactors = F)
+options(max.print = 10e3)
+
+
+# Package
 require(RJDemetra)
 
+
+# Reset
+rm(list = ls())
+gc()
+
+
+# Data
 data("ipi_c_eu")
 
 s1 <- ipi_c_eu[, "FR"]

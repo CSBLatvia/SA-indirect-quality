@@ -1,30 +1,47 @@
+# Step 1: Function for quality measures
+
+# Options
+options(encoding = "UTF-8")
+options(stringsAsFactors = F)
+options(max.print = 10e3)
+
+# Packages
 require(RJDemetra)
 require(rJava)
-require(forecast)
-require(mFilter)
 
 # Reset
 rm(list = ls())
 gc()
 
-load("data/data.Rdata")
 
+# Extra functions
 source("R/jd_seasonality.R")
+
+# Demo data
+load("data/data.Rdata")
 
 tsda
 tsia
 
-tsda_full <- tsda
-tsia_full <- tsia
+# # Save full copy
+# tsda_full <- tsda
+# tsia_full <- tsia
 
+
+# Subset by variables
 tsda <- tsda[, c("sa", "t", "i")]
 tsia <- tsia[, c("sa", "t", "i")]
+
+
+# Parameters for the function development
+years <- 3L
+digits <- 3L
 
 # Function to calculate quality measures for indirect and direct seasonal adjusted data
 quality.measures <- function(tsda,
                              tsia,
-                             years = 3,
-                             digits = 3) {
+                             years = 3L,
+                             digits = 3L) {
 
   # Testing of input
   if (any(dim(tsda) != dim(tsia))) {
@@ -39,10 +56,10 @@ quality.measures <- function(tsda,
   # Subselection by time - last n years
   if (is.na(years)) n <- nrow(tsda) else n <- years * frequency(tsda)
 
-  tsda_n <- subset(tsda, start = nrow(tsda) - n + 1)
-  tsia_n <- subset(tsia, start = nrow(tsia) - n + 1)
+  tsda_n <- forecast:::subset.ts(tsda, start = nrow(tsda) - n + 1)
+  tsia_n <- forecast:::subset.ts(tsia, start = nrow(tsia) - n + 1)
 
-  # Mean Absolute Percentage Deviation
+  # Mean Absolute Percentage Deviation (MAPE)
   MAPE <- function(tsda, tsia, digits) {
     x <- round(100 * colMeans(abs((tsda - tsia) / tsda), na.rm = TRUE),
                digits = digits)
@@ -56,7 +73,7 @@ quality.measures <- function(tsda,
                        tsia_n[, c("sa", "t")], digits = digits)
 
 
-  # Max Absolute Percentage Deviation
+  # Max Absolute Percentage Deviation (MaxAPE)
   MaxAPE <- function(tsda, tsia, digits) {
     x <- round(100 * apply(abs((tsda - tsia) / tsda), 2, max,
                            na.rm = TRUE), digits = digits)
@@ -173,14 +190,15 @@ quality.measures <- function(tsda,
   sa_test_ia <- sapply(c("QS", "FRIEDMAN", "KRUSKALWALLIS", "PERIODOGRAM"),
          jd_seasonality, s = tsia[, "sa"], simplify = F)
 
+
   # Impact on the business cycle estimation
-  bkf_da <- bkfilter(tsda[, "sa"])
-  bkf_ia <- bkfilter(tsia[, "sa"])
+  bkf_da <- mFilter::bkfilter(tsda[, "sa"])
+  bkf_ia <- mFilter::bkfilter(tsia[, "sa"])
 
-  plot(bkf_da$cycle)
-  plot(bkf_ia$cycle)
+  bkf <- cbind(da_cycle = bkf_da$cycle, ia_cycle = bkf_ia$cycle)
+  plot.ts(x = bkf, main = "Impact on the business cycle estimation")
 
-  Incons(bkf_da$cycle, bkf_ia$cycle, digits = digits)
+  # Incons(bkf_da$cycle, bkf_ia$cycle, digits = digits)
 
 
   # Characteristics of the irregular component
@@ -332,27 +350,18 @@ quality.measures <- function(tsda,
   # data.frame(series = c("Seats Indirect", "X-13 Indirect",
   #                       "Seats Direct", "X-13 Direct"), y)
 
-  return(list(MAPE = value.MAPE,
-              MAPE_n = value.MAPE.n,
-              MaxAPE = value.MaxAPE,
-              MaxAPE_n = value.MaxAPE.n,
-              Incons = Incons,
-              Incons_n = Incons_n,
-              MQstat_da = unlist(MQstat_da),
-              MQstat_ia = unlist(MQstat_ia),
-              R1_da = R1_da,
-              R2_da = R2_da,
-              R3_da = R3_da,
-              R1_ia = R1_ia,
-              R2_ia = R2_ia,
-              R3_ia = R3_ia,
-              Mar1_da = Mar1_da,
-              Mar2_da = Mar2_da,
-              Mar1_ia = Mar1_ia,
-              Mar2_ia = Mar2_ia,
-              sa_test_da = sa_test_da,
-              sa_test_ia = sa_test_ia
-  ))
+  return(list(MAPE = list(full = value.MAPE, last_n = value.MAPE.n),
+              MaxAPE = list(full = value.MaxAPE, last_n = value.MaxAPE.n),
+              Incons = list(full = value.Incons, last_n = value.Incons.n),
+              MQstat = list(da = unlist(MQstat_da), ia = unlist(MQstat_ia)),
+              R1 = list(da = R1_da, ia = R1_ia),
+              R2 = list(da = R2_da, ia = R2_ia),
+              R3 = list(da = R3_da, ia = R3_ia),
+              MarS = list(da = MarS_da, ia = MarS_ia),
+              Mar1 = list(da = Mar1_da, ia = Mar1_ia),
+              Mar2 = list(da = Mar2_da, ia = Mar2_ia),
+              SA_test = list(da = sa_test_da, ia = sa_test_ia),
+              Ireg_Stat = i_stat))
 }
 
 quality.measures(tsda, tsda)
