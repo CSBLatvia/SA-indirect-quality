@@ -1,4 +1,4 @@
-# Functionality for quality evaluation for direct / indirect adjustment
+# Quality evaluation for indirect seasonal adjustment
 
 ## Aim
 
