@@ -34,5 +34,4 @@ str(tsia)
 plot(tsda)
 plot(tsia)
 
-
 save(tsda, tsia, file = "data/data.Rdata")
