@@ -8,6 +8,9 @@ options(max.print = 10e3)
 # Packages
 require(RJDemetra)
 require(rJava)
+require(ggplot2)
+require(data.table)
+
 
 # Reset
 rm(list = ls())
@@ -29,13 +32,37 @@ tsia
 
 
 # Subset by variables
-tsda <- tsda[, c("sa", "t", "i")]
-tsia <- tsia[, c("sa", "t", "i")]
+
+ts.names <- c("sa", "t", "i")
+
+tsda <- tsda[, ts.names]
+tsia <- tsia[, ts.names]
+
+# colnames(tsda) <- paste0("da_", ts.names)
+# colnames(tsia) <- paste0("ia_", ts.names)
+
+tscomb <- cbind(tsda, tsia)
+
+start(tscomb)
+end(tscomb)
+frequency(tscomb)
+time(tscomb)
+
+tsdt <- data.table(time = as.numeric(time(tscomb)), tscomb)
+tsdt <- melt(tsdt, id.vars = "time")
+tsdt[, c("adj", "comp") := tstrsplit(variable, split = ".", fixed = T)]
+tsdt[, comp := factor(comp, ts.names, ts.names)]
 
 
-# Parameters for the function development
-years <- 3L
-digits <- 3L
+sapply(tsdt, class)
+
+plot.ts(tscomb)
+
+ggplot(tsdt, aes(x = time, y = value, colour = adj)) +
+  geom_line() +
+  facet_grid(rows = "comp", scales = "free_y") +
+  theme_bw()
+
 
 # Function to calculate quality measures for indirect and direct seasonal adjusted data
 quality.measures <- function(tsda,
@@ -364,6 +391,6 @@ quality.measures <- function(tsda,
               Ireg_Stat = i_stat))
 }
 
-quality.measures(tsda, tsda)
-quality.measures(tsda, tsia, digits = 10)
-quality.measures(tsda, tsia, years = 1.5, digits = 10)
+# quality.measures(tsda, tsda)
+quality.measures(tsda, tsia, digits = 6)
+# quality.measures(tsda, tsia, years = 1.5, digits = 10)
